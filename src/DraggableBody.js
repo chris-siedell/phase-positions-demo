@@ -1,12 +1,12 @@
 /*
- * DragObject.js
+ * DraggableBody.js
  * PhasePositionsDemo
  * astro.unl.edu
- * 4 Decebmer 2018
+ * 5 Decebmer 2018
 */
 
 
-export class DragObject {
+export class DraggableBody {
 
   constructor(parent) {
 
@@ -61,7 +61,7 @@ export class DragObject {
     this._r = color.r;
     this._g = color.g;
     this._b = color.b;
-    //this._hitArea.style.backgroundColor = 'rgba(100, 100, 100, 0.2)';
+    this._hitArea.style.backgroundColor = 'rgba(100, 100, 100, 0.2)';
     this._rgbStr = 'rgb(' + this._r + ', ' + this._g + ', ' + this._b + ')';
     this.render();
   }
@@ -157,7 +157,7 @@ export class DragObject {
       y: this._y + delta.y
     };
 
-    let wasRestricted = this._parent.setObjectPos(this, pos);
+    let wasRestricted = this._parent._setBodyPos(this, pos);
 
     if (wasRestricted) {
       console.log('was restricted');

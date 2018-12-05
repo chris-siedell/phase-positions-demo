@@ -2,7 +2,7 @@
  * Main.js
  * PhasePositionsDemo
  * astro.unl.edu
- * 4 December 2018
+ * 5 December 2018
 */
 
 
@@ -53,13 +53,14 @@ class PhaseDemo {
 
     this._orbits.render();
 
-    this.updatePhaseDiscs();
+    this.onOrbitsViewUpdate();
   }
 
 
-  updatePhaseDiscs() {
-    this._phase1.setPhaseAngle(this._orbits.calcPhaseAngleOfObj1FromObj2());
-    this._phase2.setPhaseAngle(this._orbits.calcPhaseAngleOfObj2FromObj1());
+  onOrbitsViewUpdate() {
+    let info = this._orbits.getInfo();
+    this._phase1.setPhaseAngle(info.phaseAngle1);
+    this._phase2.setPhaseAngle(info.phaseAngle2);
     this._phase1.render();
     this._phase2.render();
   }
