@@ -2,7 +2,7 @@
  * OrbitsView.js
  * PhasePositionsDemo
  * astro.unl.edu
- * 5 December 2018
+ * 7 December 2018
 */
 
 import {DraggableBody} from './DraggableBody.js';
@@ -28,7 +28,6 @@ export class OrbitsView {
 
     this._canvas = document.createElement('canvas');
     this._rootElement.appendChild(this._canvas);
-
 
     this._body1 = new DraggableBody(this);
     this._rootElement.appendChild(this._body1.getElement());
@@ -143,8 +142,10 @@ export class OrbitsView {
   }
 
 
-  _setBodyPos(body, pos) {
-    // This method is called by the dragging code of a DraggableBody instance.
+  _setBodyPosition(body, pos) {
+    // This method is called by the dragging code of a DraggableBody instance. The
+    //  proposed position, pos, is constrained by its distance from the Sun, as well
+    //  as the location of the other body.
 
     let otherBody = (body === this._body1) ? this._body2 : this._body1;
     let otherPos = otherBody.getPos();
@@ -219,7 +220,6 @@ export class OrbitsView {
     }
 
     this.render();
-
     this._parent.onOrbitsViewUpdate();
   }
 
@@ -235,12 +235,12 @@ export class OrbitsView {
     return {
       isMoon1: this._body1.__isMoon,
       isMoon2: this._body2.__isMoon,
-      phaseAngle1: this._calcPhaseAngle(this._body2.getPos(), this._body1.getPos(), this._sun),
-      phaseAngle2: this._calcPhaseAngle(this._body1.getPos(), this._body2.getPos(), this._sun)
+      phaseAngle1: this.calcPhaseAngle(this._body2.getPos(), this._body1.getPos(), this._sun),
+      phaseAngle2: this.calcPhaseAngle(this._body1.getPos(), this._body2.getPos(), this._sun)
     };
   }
 
-  _calcPhaseAngle(viewerPos, bodyPos, sunPos) {
+  calcPhaseAngle(viewerPos, bodyPos, sunPos) {
     let sx = sunPos.x - bodyPos.x;
     let sy = sunPos.y - bodyPos.y;
     let vx = viewerPos.x - bodyPos.x;
@@ -312,31 +312,6 @@ export class OrbitsView {
     ctx.fill();
   }
 
-
-  _calcPos(clientPos) {
-    let bb = this._rootElement.getBoundingClientRect();
-    return {
-      x: clientPos.x - bb.left,
-      y: clientPos.y - bb.top,
-    };
-  }
-
-  _onMouseDown(e) {
-    e.preventDefault();
-    let pos = this._calcPos({x: e.clientX, y: e.clientY});
-    console.log(pos);
-  }
-
-  _onTouchStart(e) {
-
-
-
-  }
-
-  _startDrag() {
-
-
-  }
 
 
 }

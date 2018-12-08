@@ -2,22 +2,28 @@
  * DraggableBody.js
  * PhasePositionsDemo
  * astro.unl.edu
- * 5 Decebmer 2018
+ * 7 Decebmer 2018
 */
+
+import {DraggableElementMixin} from './DraggableElementMixin.js';
 
 
 export class DraggableBody {
 
   constructor(parent) {
 
+
     this._parent = parent;
 
     this._rootElement = document.createElement('div');
     this._rootElement.style.position = 'absolute';
 
-    this._radius = 10;
+    this._mouseRadius = 10;
+    this._touchRadius = 24;
+
+    this._radius = this._mouseRadius; 
     this._dim = 4 + 2*this._radius;
-    this._hitDim = 48;
+    this._hitAreaDim = 2*this._touchRadius;
 
     this._canvas = document.createElement('canvas');
     this._canvas.style.position = 'absolute';
@@ -29,26 +35,49 @@ export class DraggableBody {
 
     this._hitArea = document.createElement('div');
     this._hitArea.style.position = 'absolute';
-    this._hitArea.style.width = this._hitDim + 'px';
-    this._hitArea.style.height = this._hitDim + 'px';
-    this._hitArea.style.left = (-0.5*this._hitDim) + 'px';
-    this._hitArea.style.top = (-0.5*this._hitDim) + 'px';
+    this._hitArea.style.width = this._hitAreaDim + 'px';
+    this._hitArea.style.height = this._hitAreaDim + 'px';
+    this._hitArea.style.left = (-0.5*this._hitAreaDim) + 'px';
+    this._hitArea.style.top = (-0.5*this._hitAreaDim) + 'px';
     this._rootElement.appendChild(this._hitArea);
 
-    this._onMouseDown = this._onMouseDown.bind(this);
-    this._onMouseMove = this._onMouseMove.bind(this);
-    this._onMouseFinished = this._onMouseFinished.bind(this);
+    // Apply and set up dragging mixin code.
+    DraggableElementMixin.apply(this);
+    this._setDragElement(this._rootElement);
+    this._setDragHitTestFunc(this._hitTestFunc);
+    this._setDragConstraintFunc(this._dragConstraintFunc);
+    this._setDragGetPosFunc(this.getPos);
+    this._setDragSetPosFunc(this.setPos);
+  }
 
 
-    this._hitArea.addEventListener('mousedown', this._onMouseDown);
-  
-    // The allowed values for dragType:
-    this._DRAG_TYPE_NONE = 0;
-    this._DRAG_TYPE_MOUSE = 1;
-    this._DRAG_TYPE_TOUCH = 2; 
+  _hitTestFunc(pointerPt, currPt, type) {
+    // This function is called by the DraggableElementMixin code to determine if
+    //  dragging should start.
+    // Arguments:
+    //  - pointerPt: the position of the pointer (mouse or touch) in the drag element's
+    //      coordinate space (in other words, an offset from the element's origin),
+    //  - currPt: the current position of the element,
+    //  - type: either 'mouse' or 'touch'.
+    // Returns: a bool that determines if dragging will start.
+    let r = Math.sqrt(pointerPt.x*pointerPt.x + pointerPt.y*pointerPt.y);
+    if (type === 'mouse') {
+      return r <= this._mouseRadius;
+    } else if (type === 'touch') {
+      return r <= this._touchRadius;
+    } else {
+      console.error('Unrecognized drag type in DraggableBody. Will ignore.');
+      return false;
+    }
+  }
 
-
-    this._dragType = this._DRAG_TYPE_NONE;
+  _dragConstraintFunc(proposedPt, pointerPt, currPt, startPt, type) {
+    // This function is called by the DraggableElementMixin code to constrain the body's
+    //  position during dragging. It always returns undefined (thereby relieving the
+    //  mixin from the responsibility of moving the body) since the parent (OrbitsView)
+    //  will move the body.
+    this._parent._setBodyPosition(this, proposedPt);
+    return undefined;
   }
 
 
@@ -61,7 +90,7 @@ export class DraggableBody {
     this._r = color.r;
     this._g = color.g;
     this._b = color.b;
-    this._hitArea.style.backgroundColor = 'rgba(100, 100, 100, 0.2)';
+    //this._hitArea.style.backgroundColor = 'rgba(100, 100, 100, 0.2)';
     this._rgbStr = 'rgb(' + this._r + ', ' + this._g + ', ' + this._b + ')';
     this.render();
   }
@@ -99,103 +128,6 @@ export class DraggableBody {
     ctx.ellipse(c, c, this._radius, this._radius, 0, 0, 2*Math.PI);
     ctx.fillStyle = this._rgbStr;
     ctx.fill();
-  }
-
-
-  _getOffset(e) {
-    let bb = this._rootElement.getBoundingClientRect();
-    return {
-      x: e.clientX - bb.left,
-      y: e.clientY - bb.top
-    };
-  }
-
-  _onMouseDown(e) {
-
-    let offset = this._getOffset(e);
-
-    let d = Math.sqrt(offset.x*offset.x + offset.y*offset.y);
-
-    if (d < this._radius) {
-      let didStart = this._startDrag(offset, this._DRAG_TYPE_MOUSE);
-      if (didStart) {
-        e.preventDefault();
-      }
-    }
-  }
-
-
-  getIsBeingDragged() {
-    return (this._dragType === this._DRAG_TYPE_MOUSE || this._dragType === this._DRAG_TYPE_TOUCH);
-  }
-
-
-  _startDrag(offset, dragType) {
-
-    if (this.getIsBeingDragged()) {
-      return false;
-    }
-
-    if (dragType === this._DRAG_TYPE_MOUSE) {
-      document.addEventListener('mousemove', this._onMouseMove);
-      document.addEventListener('mouseup', this._onMouseFinished);
-      document.addEventListener('mouseleave', this._onMouseFinished);
-    } else {
-      throw new Error('Invalid drag type.');
-    }
-
-    this._dragType = dragType;
-    this._dragOffset = offset;
-
-    return true;
-  }
-
-  _updateDrag(delta) {
-
-    let pos = {
-      x: this._x + delta.x,
-      y: this._y + delta.y
-    };
-
-    let wasRestricted = this._parent._setBodyPos(this, pos);
-
-    if (wasRestricted) {
-      console.log('was restricted');
-    }
-
-  }
-
-  _stopDrag() {
-
-    if (this._dragType === this._DRAG_TYPE_MOUSE) {
-      document.removeEventListener('mousemove', this._onMouseMove);
-      document.removeEventListener('mouseup', this._onMouseFinished);
-      document.removeEventListener('mouseleave', this._onMouseFinished);
-    }
-
-    this._dragType = this._DRAG_TYPE_NONE;
-  }
-
-  _onMouseMove(e) {
-
-    e.preventDefault();
-
-    let newOffset = this._getOffset(e);
-
-    let delta = {
-      x: newOffset.x - this._dragOffset.x,
-      y: newOffset.y - this._dragOffset.y
-    };
-
-    this._updateDrag(delta);
-
-  }
-
-  _onMouseFinished(e) {
-
-    e.preventDefault();
-
-    this._stopDrag();
   }
 
 }
