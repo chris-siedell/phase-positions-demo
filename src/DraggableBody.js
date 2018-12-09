@@ -2,7 +2,7 @@
  * DraggableBody.js
  * PhasePositionsDemo
  * astro.unl.edu
- * 7 Decebmer 2018
+ * 9 Decebmer 2018
 */
 
 import {DraggableElementMixin} from './DraggableElementMixin.js';
@@ -19,7 +19,8 @@ export class DraggableBody {
     this._rootElement.style.position = 'absolute';
 
     this._mouseRadius = 10;
-    this._touchRadius = 24;
+    this._touchRadius = 40;
+    this._touchBackupRadius = this._touchRadius + 20;
 
     this._radius = this._mouseRadius; 
     this._dim = 4 + 2*this._radius;
@@ -51,20 +52,28 @@ export class DraggableBody {
   }
 
 
-  _hitTestFunc(pointerPt, currPt, type) {
+  _hitTestFunc(pointerPt, currPt, type, isBackup) {
     // This function is called by the DraggableElementMixin code to determine if
     //  dragging should start.
     // Arguments:
     //  - pointerPt: the position of the pointer (mouse or touch) in the drag element's
     //      coordinate space (in other words, an offset from the element's origin),
     //  - currPt: the current position of the element,
-    //  - type: either 'mouse' or 'touch'.
+    //  - type: either 'mouse' or 'touch',
+    //  - isBackup: a bool; if true then the hit test is being performed for a 'backup'
+    //      pointer position (specifically, the active touch has ended, but another backup
+    //      touch is being tested for whether it should take over the active role); in this
+    //      case the hit test code may elect to be more generous.
     // Returns: a bool that determines if dragging will start.
     let r = Math.sqrt(pointerPt.x*pointerPt.x + pointerPt.y*pointerPt.y);
     if (type === 'mouse') {
       return r <= this._mouseRadius;
     } else if (type === 'touch') {
-      return r <= this._touchRadius;
+      if (isBackup) {
+        return r <= this._touchBackupRadius;
+      } else {
+        return r <= this._touchRadius;
+      }
     } else {
       console.error('Unrecognized drag type in DraggableBody. Will ignore.');
       return false;

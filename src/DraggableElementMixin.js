@@ -1,7 +1,7 @@
 /*
  * DraggableElementMixin.js
  * astro.unl.edu
- * 7 December 2018
+ * 9 December 2018
 */
 
 // This mixin adds both mouse and touch draggability to an HTML element.
@@ -80,13 +80,17 @@ export function DraggableElementMixin() {
     //  dragging should begin. If not defined, any contact (mouse down or touch start)
     //  on the drag element will initiate dragging.
     // The hit test function must have the following signature:
-    //  dragHitTestFunc(pointerPt, currPt, type) -> bool
+    //  dragHitTestFunc(pointerPt, currPt, type, isBackup) -> bool
     // Arguments:
     //  - pointerPt: the position of the pointer (mouse or touch) in the drag element's
     //      coordinate space (in other words, an offset from the element's origin),
     //  - currPt: the current position of the element,
-    //  - type: either 'mouse' or 'touch'.
-    // Returns: a bool that determines if dragging will start.
+    //  - type: either 'mouse' or 'touch',
+    //  - isBackup: a bool; if true then the hit test is being performed for a 'backup'
+    //      pointer position (specifically, the active touch has ended, but another backup
+    //      touch is being tested for whether it should take over the active role); in this
+    //      case the hit test code may elect to be more generous.
+    // Returns: a bool that indicates if the position is a hit.
     this.___DEM_hitTestFunc = func;
   };
 
@@ -273,16 +277,25 @@ export function DraggableElementMixin() {
 
 
   /*
-   * TODO: allow recalculations of pointer offset during active dragging
-   *       (e.g. to allow the element to animate to a position)
+   * _recalculateDragOffset
   */
+
+  this._recalculateDragOffset = function() {
+    // This method should be called if the position of the element is changed
+    //  via non-dragging means during dragging (e.g. the element is animating
+    //  to a 'snap' position).
+    // It is safe to call this method even when not dragging.
+    this.___DEM_offsetPt = this.___DEM_getOffsetPt(this.___DEM_clientPt);
+  };
 
 
   /*
    * Misc. Internal Methods
   */
 
-  this.___DEM_getPointerPt = function(clientPt) {
+  this.___DEM_getOffsetPt = function(clientPt) {
+    // Given a point in client space, this method returns the corresponding
+    //  point in the element's coordinate space.
     let bb = this.___DEM_element.getBoundingClientRect();
     return {
       x: clientPt.x - bb.left,
@@ -291,41 +304,18 @@ export function DraggableElementMixin() {
   };
 
 
-  /*
-   * Drag Initiation Handlers
-  */
-
-  this.___DEM_onMouseDown = (function(e) {
-    e.preventDefault();
-    if (!this.___DEM_isDraggable) {
-      return;
-    }
-    if (this._getIsBeingDragged()) {
-      return;
-    }
-    let offsetPt = this.___DEM_getPointerPt({x: e.clientX, y: e.clientY});
-    let startPt = this.___DEM_getPos();
-    if (this.___DEM_hitTestFunc !== undefined) {
-      let didHit = this.___DEM_hitTestFunc({x: offsetPt.x, y: offsetPt.y}, {x: startPt.x, y: startPt.y}, 'mouse');
-      if (!didHit) {
-        return;
-      }
-    }
-    this.___DEM_startDragging(offsetPt, startPt, this.___DEM_TYPE_MOUSE);
-  }).bind(this);
-
-
-  this.___DEM_onTouchStart = (function(e) {
-    e.preventDefault();
-
-  }).bind(this);
 
 
   /*
-   * General Dragging Methods
+   * General Internal Dragging Methods
   */
 
-  this.___DEM_startDragging = function(offsetPt, startPt, type) {
+  this.___DEM_startDragging = function(clientPt, type) {
+    // Calling code must already have determined that dragging may be started.
+    //  Specifically, this means the following:
+    //  - that isDraggable is true,
+    //  - that the element is not already being dragged,
+    //  - and that the hit test has been performed and passed, if defined.
 
     if (type === this.___DEM_TYPE_MOUSE) {
       this.___DEM_typeStr = 'mouse';
@@ -334,23 +324,37 @@ export function DraggableElementMixin() {
       document.addEventListener('mouseleave', this.___DEM_onMouseFinished);   
     } else if (type === this.___DEM_TYPE_TOUCH) {
       this.___DEM_typeStr = 'touch';
-
-
+      document.addEventListener('touchmove', this.___DEM_onTouchMove);
+      document.addEventListener('touchend', this.___DEM_onTouchFinished);
+      document.addEventListener('touchcancel', this.___DEM_onTouchFinished);
     } else {
       throw new Error('Invalid drag type.');
     }
 
     this.___DEM_type = type;
-    this.___DEM_offsetPt = offsetPt;
-    this.___DEM_startPt = startPt;
+
+    // clientPt keeps track of the latest pointer position in client space. It will
+    //  be used to recalculate the offset, if required.
+    this.___DEM_clientPt = clientPt;
+
+    // offsetPt is the (target) offset of the pointer from the element's origin during
+    //  dragging. It stays fixed unless explicitly recalculated.
+    this._recalculateDragOffset();
+
+    // startPt is the position of the element when dragging began, and remains constant.
+    this.___DEM_startPt = this.___DEM_getPos();
 
     if (this.___DEM_draggingDidStartCallback !== undefined) {
-      this.___DEM_draggingDidStartCallback(startPt, this.___DEM_typeStr);
+      this.___DEM_draggingDidStartCallback({x: startPt.x, y: startPt.y}, this.___DEM_typeStr);
     }
   };
 
 
-  this.___DEM_updateDragging = function(pointerPt) {
+  this.___DEM_updateDragging = function(clientPt) {
+
+    this.___DEM_clientPt = clientPt;
+
+    let pointerPt = this.___DEM_getOffsetPt(clientPt);
 
     let prevPt = this.___DEM_getPos();
 
@@ -388,7 +392,9 @@ export function DraggableElementMixin() {
       document.removeEventListener('mouseleave', this.___DEM_onMouseFinished);   
     } else if (this.___DEM_type === this.___DEM_TYPE_TOUCH) {
       didStop = true;
-
+      document.removeEventListener('touchmove', this.___DEM_onTouchMove);
+      document.removeEventListener('touchend', this.___DEM_onTouchFinished);
+      document.removeEventListener('touchcancel', this.___DEM_onTouchFinished);
     }
 
     this.___DEM_type = this.___DEM_TYPE_NONE;
@@ -403,11 +409,32 @@ export function DraggableElementMixin() {
    * Mouse Dragging Handlers
   */
 
+  this.___DEM_onMouseDown = (function(e) {
+    e.preventDefault();
+    if (!this.___DEM_isDraggable) {
+      return;
+    }
+    if (this._getIsBeingDragged()) {
+      return;
+    }
+    let clientPt = {x: e.clientX, y: e.clientY};
+    let offsetPt = this.___DEM_getOffsetPt(clientPt);
+    let startPt = this.___DEM_getPos();
+    if (this.___DEM_hitTestFunc !== undefined) {
+      let didHit = this.___DEM_hitTestFunc({x: offsetPt.x, y: offsetPt.y}, {x: startPt.x, y: startPt.y}, 'mouse', false);
+      if (!didHit) {
+        return;
+      }
+    }
+    this.___DEM_startDragging(clientPt, this.___DEM_TYPE_MOUSE);
+  }).bind(this);
+
+
   this.___DEM_onMouseMove = (function(e) {
     e.preventDefault();
-    let pointerPt = this.___DEM_getPointerPt({x: e.clientX, y: e.clientY});
-    this.___DEM_updateDragging(pointerPt);
+    this.___DEM_updateDragging({x: e.clientX, y: e.clientY});
   }).bind(this);
+
 
   this.___DEM_onMouseFinished = (function(e) {
     e.preventDefault();
@@ -419,7 +446,196 @@ export function DraggableElementMixin() {
    * Touch Dragging Handlers
   */
 
+  this.___DEM_onTouchStart = (function(e) {
+    e.preventDefault();
+    
+    if (!this.___DEM_isDraggable) {
+      return;
+    }
 
+    if (this.___DEM_type === this.___DEM_TYPE_TOUCH) {
+      // The element is already being dragged by touch, so start tracking all
+      //  new touches as backup touches and return.
+      this.___DEM_startTrackingBackupTouches(e.changedTouches);
+      return;
+    } else if (this._getIsBeingDragged()) {
+      // The element is already being dragged by some other means (e.g. mouse), so
+      //  ignore the touches.
+      return;
+    }
+
+    // The element is not being dragged. Start by resetting the backup touches array
+    //  and making all new touches backup touches.
+    // The backupTouches array will consist of objects with these properties:
+    //  - id, equivalent to the Touch object's identifier property,
+    //  - clientPt, the latest client position of the corresponding Touch object.
+    // The startTracking* method performs hit testing, if required.
+    this.___DEM_backupTouches = [];
+    this.___DEM_startTrackingBackupTouches(e.changedTouches);
+
+    // Select the closest touch from the backups.
+    let touch = this.___DEM_selectBackupTouch();
+    if (touch === undefined) {
+      // This may happen if none of the new touches passes the hit test.
+      return;
+    }
+    this.___DEM_startDragging(touch.clientPt, this.___DEM_TYPE_TOUCH);
+  }).bind(this);
+
+
+  this.___DEM_onTouchMove = (function(e) {
+    e.preventDefault();
+
+    this.___DEM_updateAnyBackupTouches(e.changedTouches);
+   
+    // If the active touch has moved, then dragging needs to be updated.
+    let touch = this.___DEM_findActiveTouch(e.changedTouches);
+    if (touch !== undefined) {
+      this.___DEM_updateDragging(touch.clientPt);
+    }
+  }).bind(this);
+
+
+  this.___DEM_onTouchFinished = (function(e) {
+    e.preventDefault();
+
+    this.___DEM_stopTrackingAnyBackupTouches(e.changedTouches);
+
+    let touch = this.___DEM_findActiveTouch(e.changedTouches);
+    if (touch !== undefined) {
+      // The currently active touch has ended, so select a backup touch,
+      //  if possible.
+      let backup = this.___DEM_selectBackupTouch();
+      if (backup !== undefined) {
+        // Recalculate offset for new active touch.
+        this.___DEM_clientPt = backup.clientPt;
+        this._recalculateDragOffset();
+      } else {
+        this.___DEM_stopDragging(false);
+      }
+    }
+  }).bind(this);
+
+
+  /*
+   * Touch Helper Methods
+  */
+
+  this.___DEM_selectBackupTouch = function() {
+    // This method removes and returns the best touch object from the backup touches array.
+    //  This touch is also designated as the active touch (i.e. _activeTouchID is set).
+    //  The best touch is the closest touch that passes the hit test (if defined). If no
+    //  such touch is found then undefined is returned. 
+
+    let currPt = this.___DEM_getPos();
+
+    let bestD2 = Number.POSITIVE_INFINITY;
+    let bestIndex = -1;
+
+    for (let i = 0; i < this.___DEM_backupTouches.length; ++i) {
+
+      let backup = this.___DEM_backupTouches[i];
+
+      let offsetPt = this.___DEM_getOffsetPt(backup.clientPt);
+
+      let d2 = offsetPt.x*offsetPt.x + offsetPt.y*offsetPt.y;
+
+      if (d2 > bestD2) {
+        // The touch is not closer to the origin than the best one found so far, so it is
+        //  out of consideration.
+        continue;
+      }
+
+      // Perform the hit test, if defined.
+      if (this.___DEM_hitTestFunc !== undefined) {
+        let didHit = this.___DEM_hitTestFunc({x: offsetPt.x, y: offsetPt.y}, {x: currPt.x, y: currPt.y}, 'touch', true);
+        if (!didHit) {
+          continue;
+        }
+      }
+
+      // The touch is the best one found so far.
+      bestD2 = d2;
+      bestIndex = i;
+    }
+
+    if (bestIndex >= 0) {
+      let touch = this.___DEM_backupTouches.splice(bestIndex, 1)[0];
+      this.___DEM_activeTouchID = touch.id;
+      return touch;
+    } else {
+      return undefined;
+    }
+  };
+
+  this.___DEM_startTrackingBackupTouches = function(touchList) {
+    // This method starts tracking all of the given Touch objects as backup touches, assuming
+    //  they pass they hit test (if defined).
+
+    let currPt = this.___DEM_getPos();
+
+    for (let i = 0; i < touchList.length; ++i) {
+
+      let touch = touchList[i];
+
+      let clientPt = {x: touch.clientX, y: touch.clientY};
+
+      if (this.___DEM_hitTestFunc !== undefined) {
+        let offsetPt = this.___DEM_getOffsetPt(clientPt);
+        let didHit = this.___DEM_hitTestFunc(offsetPt, {x: currPt.x, y: currPt.y}, 'touch', false);
+        if (didHit) {
+          this.___DEM_backupTouches.push({id: touch.identifier, clientPt: clientPt});
+        }
+      } else {
+        this.___DEM_backupTouches.push({id: touch.identifier, clientPt: clientPt});
+      }
+    }
+  };
+
+
+  this.___DEM_stopTrackingAnyBackupTouches = function(touchList) {
+    // This method removes any of the given touches from the backup touches array.
+    for (let i = this.___DEM_backupTouches.length - 1; i >= 0; --i) {
+      let id = this.___DEM_backupTouches[i].id;
+      for (let j = 0; j < touchList.length; ++j) {
+        if (touchList[j].identifier === id) {
+          this.___DEM_backupTouches.splice(i, 1);
+          break;
+        }
+      }
+    }
+  };
+
+
+  this.___DEM_updateAnyBackupTouches = function(touchList) {
+    // This method updates any of the given touches that are in the backup touches array.
+    for (let i = 0; i < touchList.length; ++i) {
+      let touch = touchList[i];
+      for (let j = 0; j < this.___DEM_backupTouches.length; ++j) {
+        if (this.___DEM_backupTouches[j].id === touch.identifier) {
+          let pt = this.___DEM_backupTouches[j].clientPt;
+          pt.x = touch.clientX;
+          pt.y = touch.clientY;
+          break;
+        }
+      }
+    }
+  };
+
+
+  this.___DEM_findActiveTouch = function(touchList) {
+    // This method searches the given touchList and returns the active touch as an object
+    //  with id and clientPt properties, if found. Otherwise, undefined is returned.
+    for (let i = 0; i < touchList.length; ++i) {
+      if (touchList[i].identifier === this.___DEM_activeTouchID) {
+        return {
+          id: this.___DEM_activeTouchID,
+          clientPt: {x: touchList[i].clientX, y: touchList[i].clientY}
+        };
+      }
+    }
+    return undefined;
+  };
 
 };
 
