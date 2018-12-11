@@ -3,7 +3,7 @@ const path = require('path');
 module.exports = {
   entry: './src/Main.js', 
   output: { 
-            filename: 'PhaseDemo.js', 
+            filename: 'PhasePositionsDemo.js', 
             path: path.resolve(__dirname, 'dist') 
           }, 
   module: {

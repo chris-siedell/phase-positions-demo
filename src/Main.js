@@ -1,16 +1,18 @@
 /*
  * Main.js
- * PhasePositionsDemo
+ * phase-positions-demo
  * astro.unl.edu
- * 5 December 2018
+ * 11 December 2018
 */
+
+import ResizeSensor from 'css-element-queries/src/ResizeSensor';
 
 
 import {OrbitsView} from './OrbitsView.js';
 import {PhaseDisc} from './PhaseDisc.js';
 
 
-class PhaseDemo {
+class PhasePositionsDemo {
 
   constructor(rootElement) {
 
@@ -24,45 +26,73 @@ class PhaseDemo {
 
     this._rootElement = rootElement;
 
-    let bb = this._rootElement.getBoundingClientRect();
-
-    let orbitsSize = bb.height;
-    let phaseX = orbitsSize;
-    let phaseWidth = bb.width - phaseX;
-    let phaseHeight = 0.5*bb.height;
-
     this._orbits = new OrbitsView(this);
     this._rootElement.appendChild(this._orbits.getElement());
     this._orbits.setColor1(color1);
     this._orbits.setColor2(color2);
-    this._orbits.setWidthAndHeight(orbitsSize, orbitsSize);
 
     this._phase1 = new PhaseDisc(this, 'Disc1');
     this._rootElement.appendChild(this._phase1.getElement());
-    this._phase1.setWidthAndHeight(phaseWidth, phaseHeight);
-    this._phase1.setPos({x: phaseX, y: 0});
     this._phase1.setLightColor(light1);
     this._phase1.setDarkColor(dark1);
 
     this._phase2 = new PhaseDisc(this, 'Disc2');
     this._rootElement.appendChild(this._phase2.getElement());
-    this._phase2.setWidthAndHeight(phaseWidth, phaseHeight);
-    this._phase2.setPos({x: phaseX, y: phaseHeight});
     this._phase2.setLightColor(light2);
     this._phase2.setDarkColor(dark2);
 
-    this._orbits.render();
+    this._lastWidth = -1;
+    this._lastHeight = -1;
 
-    this.onOrbitsViewUpdate();
+    this._rootStyle = window.getComputedStyle(this._rootElement);
+
+    this._resizeSensor = new ResizeSensor(this._rootElement, () => {
+      this._resetLayout();
+    });
+
+    this._resetLayout();
   }
 
 
-  onOrbitsViewUpdate() {
+  _resetLayout() {
+
+    let width = parseFloat(this._rootStyle.width);
+    let height = parseFloat(this._rootStyle.height);
+
+    if (width === this._lastWidth && height === this._lastHeight) {
+      return;
+    }
+
+    let orbitsWidth = Math.min(height, 0.8*width);
+    let orbitsHeight = height;
+
+    let phaseHeight = 0.5*height;
+    let phaseX = orbitsWidth;
+    let phaseWidth = width - phaseX;
+
+    this._orbits.setWidthAndHeight(orbitsWidth, orbitsHeight);
+
+    this._phase1.setWidthAndHeight(phaseWidth, phaseHeight);
+    this._phase1.setPos({x: phaseX, y: 0});
+
+    this._phase2.setWidthAndHeight(phaseWidth, phaseHeight);
+    this._phase2.setPos({x: phaseX, y: phaseHeight});
+
+    this._lastWidth = width;
+    this._lastHeight = height;
+
+    this._orbits.redraw();
+
+    this._onOrbitsViewChanged();
+  }
+
+
+  _onOrbitsViewChanged() {
     let info = this._orbits.getInfo();
     this._phase1.setPhaseAngle(info.phaseAngle1);
     this._phase2.setPhaseAngle(info.phaseAngle2);
-    this._phase1.render();
-    this._phase2.render();
+    this._phase1.redraw();
+    this._phase2.redraw();
   }
 
 }
@@ -73,10 +103,10 @@ if (typeof window !== 'undefined') {
     window.astroUNL = {};
   }
 
-  if (window.astroUNL.PhaseDemo === undefined) {
-    window.astroUNL.PhaseDemo = PhaseDemo;
+  if (window.astroUNL.PhasePositionsDemo === undefined) {
+    window.astroUNL.PhasePositionsDemo = PhasePositionsDemo;
   } else {
-    console.warn('astroUNL.PhaseDemo is already defined.');
+    console.warn('astroUNL.PhasePositionsDemo is already defined.');
   }
 }
 

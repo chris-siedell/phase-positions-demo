@@ -1,17 +1,16 @@
 /*
  * DraggableBody.js
- * PhasePositionsDemo
+ * phase-positions-demo
  * astro.unl.edu
- * 9 Decebmer 2018
+ * 11 December 2018
 */
 
-import {DraggableElementMixin} from './DraggableElementMixin.js';
+import {DraggableItemMixin} from './mixins/DraggableItemMixin.js';
 
 
 export class DraggableBody {
 
   constructor(parent) {
-
 
     this._parent = parent;
 
@@ -19,7 +18,7 @@ export class DraggableBody {
     this._rootElement.style.position = 'absolute';
 
     this._mouseRadius = 10;
-    this._touchRadius = 40;
+    this._touchRadius = 45;
     this._touchBackupRadius = this._touchRadius + 20;
 
     this._radius = this._mouseRadius; 
@@ -43,7 +42,7 @@ export class DraggableBody {
     this._rootElement.appendChild(this._hitArea);
 
     // Apply and set up dragging mixin code.
-    DraggableElementMixin.apply(this);
+    DraggableItemMixin.apply(this);
     this._setDragElement(this._rootElement);
     this._setDragHitTestFunc(this._hitTestFunc);
     this._setDragConstraintFunc(this._dragConstraintFunc);
@@ -101,7 +100,7 @@ export class DraggableBody {
     this._b = color.b;
     //this._hitArea.style.backgroundColor = 'rgba(100, 100, 100, 0.2)';
     this._rgbStr = 'rgb(' + this._r + ', ' + this._g + ', ' + this._b + ')';
-    this.render();
+    this.redraw();
   }
 
   getRGBString() {
@@ -125,7 +124,7 @@ export class DraggableBody {
   }
 
 
-  render() {
+  redraw() {
 
     let ctx = this._canvas.getContext('2d');
 

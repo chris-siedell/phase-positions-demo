@@ -1,8 +1,8 @@
 /*
  * OrbitsView.js
- * PhasePositionsDemo
+ * phase-positions-demo
  * astro.unl.edu
- * 7 December 2018
+ * 11 December 2018
 */
 
 import {DraggableBody} from './DraggableBody.js';
@@ -36,6 +36,9 @@ export class OrbitsView {
     this._body2 = new DraggableBody(this);
     this._rootElement.appendChild(this._body2.getElement());
     this._body2.__isMoon = false;
+
+    this._body1._addCompetingDragItem(this._body2);
+    this._body2._addCompetingDragItem(this._body1);
   }
 
   
@@ -59,12 +62,13 @@ export class OrbitsView {
     this._width = width;
     this._height = height;
 
-    this._moonDistance = 60;
-    this._moonCaptureDistance = 80;
-    this._moonEscapeDistance = 130;
+    this._moonDistance = 45;
+    this._moonCaptureDistance = 50;
+    this._moonEscapeDistance = 60;
 
-    this._minSunDistance = 100;
-    this._maxSunDistance = 0.5*Math.min(this._width, this._height) - 80;
+    let margin = this._moonDistance + 10;
+    this._minSunDistance = margin;
+    this._maxSunDistance = 0.5*Math.min(this._width, this._height) - margin;
 
     this._rootElement.style.width = this._width + 'px';
     this._rootElement.style.height = this._height + 'px';
@@ -73,8 +77,8 @@ export class OrbitsView {
     this._canvas.height = this._height;
     
     this._sun = {x: 0.5*this._width, y: 0.5*this._height};
-    this._body1.setPos({x: 320, y: 320});
-    this._body2.setPos({x: 400, y: 200});
+    this._body1.setPos({x: this._sun.x - this._maxSunDistance, y: this._sun.y});
+    this._body2.setPos({x: this._sun.x, y: this._sun.y + this._minSunDistance});
   }
 
 
@@ -219,8 +223,8 @@ export class OrbitsView {
       }
     }
 
-    this.render();
-    this._parent.onOrbitsViewUpdate();
+    this.redraw();
+    this._parent._onOrbitsViewChanged();
   }
 
   
@@ -249,7 +253,7 @@ export class OrbitsView {
   }
 
 
-  render() {
+  redraw() {
 
     let ctx = this._canvas.getContext('2d');
 

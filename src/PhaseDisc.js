@@ -1,8 +1,8 @@
 /*
  * PhaseDisc.js
- * PhasePositionsDemo
+ * phase-positions-demo
  * astro.unl.edu
- * 4 December 2018
+ * 11 December 2018
 */
 
 
@@ -38,7 +38,7 @@ export class PhaseDisc {
     this._height = height;
     this._midX = 0.5*this._width;
     this._midY = 0.5*this._height;
-    this._radius = 0.5*0.5*Math.min(this._width, this._height);
+    this._radius = 0.8*0.5*Math.min(this._width, this._height);
     this._canvas.width = this._width;
     this._canvas.height = this._height;
   }
@@ -65,7 +65,8 @@ export class PhaseDisc {
     return this._angle;
   }
 
-  render() {
+
+  redraw() {
 
     let ctx = this._canvas.getContext('2d');
 
