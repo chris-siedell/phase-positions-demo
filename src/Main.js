@@ -2,7 +2,7 @@
  * Main.js
  * phase-positions-demo
  * astro.unl.edu
- * 11 December 2018
+ * 12 December 2018
 */
 
 import ResizeSensor from 'css-element-queries/src/ResizeSensor';
@@ -63,20 +63,47 @@ class PhasePositionsDemo {
       return;
     }
 
-    let orbitsWidth = Math.min(height, 0.8*width);
-    let orbitsHeight = height;
+    // ratioLimit helps determine the minimal size of the phase disc panels.
+    //  (A smaller value makes the phase disc panels larger at their smallest,
+    //  at the expense of making the orbits panel smaller.)
+    let ratioLimit = 0.75;
 
-    let phaseHeight = 0.5*height;
-    let phaseX = orbitsWidth;
-    let phaseWidth = width - phaseX;
+    let orbitsWidth, orbitsHeight, phaseWidth, phaseHeight;
+
+    if (width >= height) {
+
+      orbitsWidth = Math.min(height, ratioLimit*width);
+      orbitsHeight = height;
+
+      phaseHeight = 0.5*height;
+      phaseWidth = Math.min(phaseHeight, width - orbitsWidth);
+
+      let orbitsX = 0.5*(width - orbitsWidth - phaseWidth);
+      let phaseX = orbitsX + orbitsWidth;
+
+      this._orbits.setPos({x: orbitsX, y: 0});
+      this._phase1.setPos({x: phaseX, y: 0});
+      this._phase2.setPos({x: phaseX, y: phaseHeight});
+
+    } else {
+
+      orbitsWidth = width;
+      orbitsHeight = Math.min(ratioLimit*height, width);
+
+      phaseWidth = 0.5*width;
+      phaseHeight = Math.min(phaseWidth, height - orbitsHeight);
+
+      let orbitsY = 0.5*(height - orbitsHeight - phaseHeight);
+      let phaseY = orbitsY + orbitsHeight;
+
+      this._orbits.setPos({x: 0, y: orbitsY});
+      this._phase1.setPos({x: 0, y: phaseY});
+      this._phase2.setPos({x: phaseWidth, y: phaseY});
+    }
 
     this._orbits.setWidthAndHeight(orbitsWidth, orbitsHeight);
-
     this._phase1.setWidthAndHeight(phaseWidth, phaseHeight);
-    this._phase1.setPos({x: phaseX, y: 0});
-
     this._phase2.setWidthAndHeight(phaseWidth, phaseHeight);
-    this._phase2.setPos({x: phaseX, y: phaseHeight});
 
     this._lastWidth = width;
     this._lastHeight = height;

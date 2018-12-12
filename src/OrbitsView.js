@@ -2,7 +2,7 @@
  * OrbitsView.js
  * phase-positions-demo
  * astro.unl.edu
- * 11 December 2018
+ * 12 December 2018
 */
 
 import {DraggableBody} from './DraggableBody.js';
@@ -54,6 +54,22 @@ export class OrbitsView {
 
   setColor2(color) {
     this._body2.setColor(color);
+  }
+
+
+  getPos() {
+    return {
+      x: this._x, 
+      y: this._y
+    };
+  }
+
+
+  setPos(pos) {
+    this._x = pos.x;
+    this._y = pos.y;
+    this._rootElement.style.left = this._x + 'px';
+    this._rootElement.style.top = this._y + 'px';
   }
 
 
