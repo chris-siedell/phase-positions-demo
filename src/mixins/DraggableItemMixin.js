@@ -2,7 +2,7 @@
  * DraggableItemMixin.js
  * mixins
  * astro.unl.edu
- * 11 December 2018
+ * 12 December 2018
 */
 
 // This mixin adds both mouse and touch draggability to an item.
@@ -28,7 +28,6 @@ export function DraggableItemMixin() {
   this.___DIM_TYPE_TOUCH = 2;
 
   this.___DIM_type = this.___DIM_TYPE_NONE;
-
 
 
   /*
@@ -125,6 +124,10 @@ export function DraggableItemMixin() {
    * Returns: a point or undefined. If the return value is a point then it will be
    *   used to assign the element's new position. If the return value is undefined then
    *   the element's position will not change, but dragging will remain active.
+   * The returned point is expected to be an object with x and y properties. This object
+   *  is passed unmodified to the dragSetPos function, if that function is defined. In that
+   *  case the point object may contain any properties expected by that function, which
+   *  do not necessarily need to be x and y properties.
   */
 
   this.___DIM_constraintFunc = undefined;

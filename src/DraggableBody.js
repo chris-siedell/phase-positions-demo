@@ -2,7 +2,7 @@
  * DraggableBody.js
  * phase-positions-demo
  * astro.unl.edu
- * 11 December 2018
+ * 12 December 2018
 */
 
 import {DraggableItemMixin} from './mixins/DraggableItemMixin.js';
@@ -47,13 +47,12 @@ export class DraggableBody {
     this._setDragHitTestFunc(this._hitTestFunc);
     this._setDragConstraintFunc(this._dragConstraintFunc);
     this._setDragGetPosFunc(this.getPos);
-    this._setDragSetPosFunc(this.setPos);
   }
 
 
   _hitTestFunc(pointerPt, currPt, type, isBackup) {
     // This function is called by the DraggableElementMixin code to determine if
-    //  dragging should start.
+    //  a point is on the object (e.g. if dragging should start).
     // Arguments:
     //  - pointerPt: the position of the pointer (mouse or touch) in the drag element's
     //      coordinate space (in other words, an offset from the element's origin),
@@ -74,7 +73,7 @@ export class DraggableBody {
         return r <= this._touchRadius;
       }
     } else {
-      console.error('Unrecognized drag type in DraggableBody. Will ignore.');
+      console.error('Unrecognized drag type. Will ignore.');
       return false;
     }
   }
@@ -88,9 +87,18 @@ export class DraggableBody {
     return undefined;
   }
 
-
   getElement() {
     return this._rootElement;
+  }
+
+
+  getOtherBody() {
+    return this._otherBody;
+  }
+
+  setOtherBody(otherBody) {
+    this._otherBody = otherBody;
+    this._addCompetingDragItem(otherBody);
   }
 
 
@@ -100,7 +108,6 @@ export class DraggableBody {
     this._b = color.b;
     //this._hitArea.style.backgroundColor = 'rgba(100, 100, 100, 0.2)';
     this._rgbStr = 'rgb(' + this._r + ', ' + this._g + ', ' + this._b + ')';
-    this.redraw();
   }
 
   getRGBString() {
@@ -110,11 +117,10 @@ export class DraggableBody {
 
   getPos() {
     return {
-      x: this._x, 
+      x: this._x,
       y: this._y
     };
   }
-
 
   setPos(pos) {
     this._x = pos.x;
@@ -123,6 +129,62 @@ export class DraggableBody {
     this._rootElement.style.top = this._y + 'px';
   }
 
+  setStateAndPos(stateAndPos) {
+    this.setState(stateAndPos);
+    this.setPos(stateAndPos);
+  }
+
+  getIsMoon() {
+    return this._isMoon;
+  }
+
+  getState() {
+    return {
+      isMoon: this._isMoon,
+      angle: this._angle,
+      distance: this._distance
+    };
+  }
+
+  setState(state) {
+
+    if (state === undefined) {
+      this._isMoon = false;
+      this._angle = 0.0;
+      this._distance = 0.5;
+      console.error('The body\'s state object is undefined.');
+      return;
+    }
+
+    this._isMoon = Boolean(state.isMoon);
+
+    if (Number.isFinite(state.angle)) {
+      this._angle = state.angle;
+    } else {
+      this._angle = 0.0;
+      console.error('The body\'s angle property must be a finite number.');
+    }
+
+    if (Number.isFinite(state.distance)) {
+      if (state.distance < 0.0) {
+        this._distance = 0.0;
+        console.error('The body\'s distance property must be between in the range [0.0, 1.0].');
+      } else if (state.distance > 1.0) {
+        this._distance = 1.0;
+        console.error('The body\'s distance property must be between in the range [0.0, 1.0].');
+      } else {
+        this._distance = state.distance;
+      }
+    } else {
+      this._distance = 0.5;
+      console.error('The body\'s distance property must be a finite number.');
+    }
+  }
+
+
+  render() {
+    this.redraw();
+  }
 
   redraw() {
 

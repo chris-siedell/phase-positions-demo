@@ -47,20 +47,42 @@ class PhasePositionsDemo {
     this._rootStyle = window.getComputedStyle(this._rootElement);
 
     this._resizeSensor = new ResizeSensor(this._rootElement, () => {
-      this._resetLayout();
+      let didReset = this._resetLayout();
+      if (didReset) {
+        this.render();
+      }
     });
 
     this._resetLayout();
   }
 
 
+  init() {
+
+    this._orbits.setState({
+      body1: {
+        isMoon: false,
+        angle: 0.5*Math.PI,
+        distance: 0.5
+      },
+      body2: {
+        isMoon: false,
+        angle: 1.25*Math.PI,
+        distance: 1.0
+      }
+    });
+
+    this.render();
+  }
+
+  
   _resetLayout() {
 
     let width = parseFloat(this._rootStyle.width);
     let height = parseFloat(this._rootStyle.height);
 
     if (width === this._lastWidth && height === this._lastHeight) {
-      return;
+      return false;
     }
 
     // ratioLimit helps determine the minimal size of the phase disc panels.
@@ -108,8 +130,11 @@ class PhasePositionsDemo {
     this._lastWidth = width;
     this._lastHeight = height;
 
-    this._orbits.redraw();
+    return true;
+  }
 
+  render() {
+    this._orbits.render();
     this._onOrbitsViewChanged();
   }
 

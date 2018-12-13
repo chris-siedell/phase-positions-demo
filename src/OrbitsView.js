@@ -18,6 +18,19 @@ export class OrbitsView {
   // As a planet, a body is constrained to a range of distances from the Sun.
   // As a moon, a body is constrained to an orbit of a fixed radius from the other body.
 
+  // The state of the OrbitsView is encapsulated in an object with these properties:
+  //  - body1: an object (see definition below),
+  //  - body2: an object (see definition below).
+  // The body objects have the following properties:
+  //  - isMoon: a bool (only one body may be a moon),
+  //  - distance: a float between 0.0 (minSunDistance) and 1.0 (maxSunDistance); this
+  //      property is ignored if isMoon is true, but still must be a number in [0, 1],
+  //  - angle: the CCW angle, in radians, from the +x vector, measure wrt the Sun (when
+  //      isMoon is false), or the other body (when isMoon is true).
+
+  // The bodies' actual positions are derived from the state and the current size of
+  //  the OrbitsView.
+ 
 
   constructor(parent) {
 
@@ -31,21 +44,50 @@ export class OrbitsView {
 
     this._body1 = new DraggableBody(this);
     this._rootElement.appendChild(this._body1.getElement());
-    this._body1.__isMoon = false;
 
     this._body2 = new DraggableBody(this);
     this._rootElement.appendChild(this._body2.getElement());
-    this._body2.__isMoon = false;
 
-    this._body1._addCompetingDragItem(this._body2);
-    this._body2._addCompetingDragItem(this._body1);
+    this._body1.setOtherBody(this._body2);
+    this._body2.setOtherBody(this._body1);
+
+    this._width = -1;
+    this._height = -1;
   }
+ 
 
-  
   getElement() {
     return this._rootElement;
   }
 
+
+  setState(state) {
+        
+    this._body1._cancelDragging();
+    this._body2._cancelDragging();
+
+    this._body1.setState(state.body1);
+    this._body2.setState(state.body2);
+
+    if (this._body1.getIsMoon() && this._body2.getIsMoon()) {
+      this._body2.setState({
+        isMoon: false,
+        angle: 0,
+        distance: 0.5
+      });
+      console.error('Only one body may be a moon.');
+    }
+
+    this._recalculateBodyPositions();
+  }
+
+
+  getState() {
+    return {
+      body1: this._body1.getState(),
+      body2: this._body2.getState()
+    };
+  }
 
   setColor1(color) {
     this._body1.setColor(color);
@@ -63,7 +105,6 @@ export class OrbitsView {
       y: this._y
     };
   }
-
 
   setPos(pos) {
     this._x = pos.x;
@@ -93,8 +134,60 @@ export class OrbitsView {
     this._canvas.height = this._height;
     
     this._sun = {x: 0.5*this._width, y: 0.5*this._height};
-    this._body1.setPos({x: this._sun.x - this._maxSunDistance, y: this._sun.y});
-    this._body2.setPos({x: this._sun.x, y: this._sun.y + this._minSunDistance});
+
+    // TODO: for consideration, cancel drag or recalc offset on resize? depends on magnitude?
+    
+    this._body1._cancelDragging();
+    this._body2._cancelDragging();
+
+
+    this._recalculateBodyPositions();
+  }
+
+
+  _recalculateBodyPositions() {
+    // If a body is a moon, the other body must be recalculated
+    //  first. If neither is a moon, it doesn't matter.
+    if (this._body1.getIsMoon()) {
+      this._recalculateBodyPos(this._body2);
+      this._recalculateBodyPos(this._body1);
+    } else {
+      this._recalculateBodyPos(this._body1);
+      this._recalculateBodyPos(this._body2);
+    }
+  }
+
+  _recalculateBodyPos(body) {
+    // Recalculates and sets the position of the given body.
+
+    if (this._width < 0) {
+      return;
+    }
+
+    let bodyState = body.getState();
+
+    let x0, y0, r;
+
+    if (bodyState.isMoon) {
+
+      let otherBody = (body === this._body1) ? this._body2 : this._body1;
+      let otherPos = otherBody.getPos();
+
+      r = this._moonDistance;
+      x0 = otherPos.x;
+      y0 = otherPos.y;
+
+    } else {
+
+      r = this._minSunDistance + bodyState.distance*(this._maxSunDistance - this._minSunDistance);
+      x0 = this._sun.x;
+      y0 = this._sun.y;
+    }
+
+    body.setPos({
+      x: x0 + r*Math.cos(bodyState.angle),
+      y: y0 + r*Math.sin(bodyState.angle)
+    });
   }
 
 
@@ -111,30 +204,42 @@ export class OrbitsView {
     // The returned object has these properties:
     //  - x, y: the constrained planet position,
     //  - isWithinBounds: boolean indicating if the unconstrained position is within the
-    //      allowed Sun distance range.
+    //      allowed Sun distance range,
+    //  - isMoon: false,
+    //  - distance, angle: see state definition.
     let x_s = origPos.x - this._sun.x;
     let y_s = origPos.y - this._sun.y;
-    let d = Math.sqrt(x_s*x_s + y_s*y_s);
-    let theta = Math.atan2(y_s, x_s);
-    if (d < this._minSunDistance) {
-      d = this._minSunDistance;
+    let r = Math.sqrt(x_s*x_s + y_s*y_s);
+    let distance = (r - this._minSunDistance)/(this._maxSunDistance - this._minSunDistance);
+    let angle = Math.atan2(y_s, x_s);
+    if (distance < 0.0) {
+      r = this._minSunDistance;
       return {
-        x: this._sun.x + d*Math.cos(theta),
-        y: this._sun.y + d*Math.sin(theta),
-        isWithinBounds: false
+        x: this._sun.x + r*Math.cos(angle),
+        y: this._sun.y + r*Math.sin(angle),
+        isWithinBounds: false,
+        isMoon: false,
+        distance: 0.0,
+        angle: angle
       };
-    } else if (d > this._maxSunDistance) {
-      d = this._maxSunDistance;
+    } else if (distance > 1.0) {
+      r = this._maxSunDistance;
       return {
-        x: this._sun.x + d*Math.cos(theta),
-        y: this._sun.y + d*Math.sin(theta),
-        isWithinBounds: false
+        x: this._sun.x + r*Math.cos(angle),
+        y: this._sun.y + r*Math.sin(angle),
+        isWithinBounds: false,
+        isMoon: false,
+        distance: 1.0,
+        angle: angle
       };
     } else {
       return {
         x: origPos.x,
         y: origPos.y,
-        isWithinBounds: true
+        isWithinBounds: true,
+        isMoon: false,
+        distance: distance,
+        angle: angle
       };
     }
   }
@@ -148,16 +253,22 @@ export class OrbitsView {
     //  - isWithinCaptureDistance: boolean indicating if the unconstrained position is within
     //      the capture distance,
     //  - doesExceedEscapeDistance: boolean indicating if the unconstrained position exceeds
-    //      the escape distance.
+    //      the escape distance,
+    //  - isMoon: true,
+    //  - distance: 0.5,
+    //  - angle: see state definition.
     let x_p = origPos.x - planetPos.x;
     let y_p = origPos.y - planetPos.y;
     let d = Math.sqrt(x_p*x_p + y_p*y_p);
-    let theta = Math.atan2(y_p, x_p);
+    let angle = Math.atan2(y_p, x_p);
     return {
-      x: planetPos.x + this._moonDistance*Math.cos(theta),
-      y: planetPos.y + this._moonDistance*Math.sin(theta),
+      x: planetPos.x + this._moonDistance*Math.cos(angle),
+      y: planetPos.y + this._moonDistance*Math.sin(angle),
       isWithinCaptureDistance: (d < this._moonCaptureDistance),
-      doesExceedEscapeDistance: (d > this._moonEscapeDistance)
+      doesExceedEscapeDistance: (d > this._moonEscapeDistance),
+      isMoon: true,
+      distance: 0.5,
+      angle: angle
     };
   }
 
@@ -170,7 +281,7 @@ export class OrbitsView {
     let otherBody = (body === this._body1) ? this._body2 : this._body1;
     let otherPos = otherBody.getPos();
 
-    if (body.__isMoon) {
+    if (body.getIsMoon()) {
       // If the moon (body) is moved far enough away from the planet (otherBody), 
       //  then it will break free and become a planet.
       // body: is moon
@@ -184,8 +295,7 @@ export class OrbitsView {
         if (planetGeom.isWithinBounds) {
           // No planet position adjustment necessary, so the moon breaks free.
           // body: moon -> planet
-          body.__isMoon = false;
-          body.setPos(planetGeom);
+          body.setStateAndPos(planetGeom);
         } else {
           // The body's planet position has to be adjusted to stay within the
           //  allowed Sun distance range. It is possible that this adjusted
@@ -194,29 +304,28 @@ export class OrbitsView {
           let moonGeom2 = this.calcMoonGeometry(planetGeom, otherPos);
           if (moonGeom2.isWithinCaptureDistance) {
             // body: stays moon
-            body.setPos(moonGeom);
+            body.setStateAndPos(moonGeom);
           } else {
             // body: moon -> planet
-            body.__isMoon = false;
-            body.setPos(planetGeom);
+            body.setStateAndPos(planetGeom);
           }
         }
       } else {
         // body: stays moon
-        body.setPos(moonGeom);
+        body.setStateAndPos(moonGeom);
       }
-    } else if (otherBody.__isMoon) {
+    } else if (otherBody.getIsMoon()) {
       // The moon (otherBody) moves to follow the planet (body).
       // body: stays planet
       // otherBody: stays moon
       
       // The planet is constrained only by the Sun distance.
       let planetGeom = this.calcPlanetGeometry(pos);
-      body.setPos(planetGeom);
+      body.setStateAndPos(planetGeom);
 
       // The moon follows no matter what.
       let moonGeom = this.calcMoonGeometry(otherPos, planetGeom);
-      otherBody.setPos(moonGeom);
+      otherBody.setStateAndPos(moonGeom);
     
     } else {
       // If the given planet (body) is moved close enough to the other planet (otherBody),
@@ -231,15 +340,14 @@ export class OrbitsView {
 
       if (moonGeom.isWithinCaptureDistance) {
         // body: planet -> moon
-        body.__isMoon = true;
-        body.setPos(moonGeom);
+        body.setStateAndPos(moonGeom);
       } else {
         // body: stays planet
-        body.setPos(planetGeom);
+        body.setStateAndPos(planetGeom);
       }
     }
 
-    this.redraw();
+    this.render();
     this._parent._onOrbitsViewChanged();
   }
 
@@ -252,11 +360,13 @@ export class OrbitsView {
     //  - phaseAngle2: the phase angle of body 2 as viewed from body 1.
     // The phase angles are in radians, with 0 corresponding to a fully illuminated
     //  disc.
+    let pos1 = this._body1.getPos();
+    let pos2 = this._body2.getPos();
     return {
-      isMoon1: this._body1.__isMoon,
-      isMoon2: this._body2.__isMoon,
-      phaseAngle1: this.calcPhaseAngle(this._body2.getPos(), this._body1.getPos(), this._sun),
-      phaseAngle2: this.calcPhaseAngle(this._body1.getPos(), this._body2.getPos(), this._sun)
+      isMoon1: this._body1.getIsMoon(),
+      isMoon2: this._body2.getIsMoon(),
+      phaseAngle1: this.calcPhaseAngle(pos2, pos1, this._sun),
+      phaseAngle2: this.calcPhaseAngle(pos1, pos2, this._sun)
     };
   }
 
@@ -269,13 +379,20 @@ export class OrbitsView {
   }
 
 
+  render() {
+    this._body1.render();
+    this._body2.render();
+    this.redraw();
+  }
+
+
   redraw() {
 
     let ctx = this._canvas.getContext('2d');
 
     ctx.clearRect(0, 0, this._width, this._height);
 
-    if (this._body1.__isMoon) {
+    if (this._body1.getIsMoon()) {
 
       let pos2 = this._body2.getPos();
 
@@ -292,7 +409,7 @@ export class OrbitsView {
       ctx.strokeStyle = this._body2.getRGBString();
       ctx.stroke();
 
-    } else if (this._body2.__isMoon) {
+    } else if (this._body2.getIsMoon()) {
 
       let pos1 = this._body1.getPos();
 
