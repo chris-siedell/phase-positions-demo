@@ -143,8 +143,8 @@ class PhasePositionsDemo {
     let info = this._orbits.getInfo();
     this._phase1.setPhaseAngle(info.phaseAngle1);
     this._phase2.setPhaseAngle(info.phaseAngle2);
-    this._phase1.redraw();
-    this._phase2.redraw();
+    this._phase1.render();
+    this._phase2.render();
   }
 
 }

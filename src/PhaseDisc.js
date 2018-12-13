@@ -2,7 +2,7 @@
  * PhaseDisc.js
  * phase-positions-demo
  * astro.unl.edu
- * 11 December 2018
+ * 12 December 2018
 */
 
 
@@ -66,6 +66,10 @@ export class PhaseDisc {
   }
 
 
+  render() {
+    this.redraw();
+  }
+
   redraw() {
 
     let ctx = this._canvas.getContext('2d');
@@ -122,25 +126,25 @@ export class PhaseDisc {
       // Left side, crescent shape.
       ctx.beginPath();
       ctx.ellipse(this._midX, this._midY, this._radius, minorRadius, 0.5*Math.PI, 0, Math.PI);
-      ctx.ellipse(this._midX, this._midY, this._radius, this._radius, 0.5*Math.PI, 0, Math.PI);
+      ctx.ellipse(this._midX, this._midY, this._radius, this._radius, 0.5*Math.PI, Math.PI, 2*Math.PI, true);
       ctx.fillStyle = leftFillStyle;
       ctx.fill('evenodd');
       // Right side, gibbous shape.
       ctx.beginPath();
-      ctx.ellipse(this._midX, this._midY, this._radius, this._radius, 0.5*Math.PI, Math.PI, 2*Math.PI);
-      ctx.ellipse(this._midX, this._midY, this._radius, minorRadius, 0.5*Math.PI, 0, Math.PI);
+      ctx.ellipse(this._midX, this._midY, this._radius, this._radius, 0.5*Math.PI, 0, Math.PI, true);
+      ctx.ellipse(this._midX, this._midY, this._radius, minorRadius, 0.5*Math.PI, Math.PI, 2*Math.PI, true);
       ctx.fillStyle = rightFillStyle;
       ctx.fill('evenodd');
     } else {
       // Left side, gibbous shape.
       ctx.beginPath();
-      ctx.ellipse(this._midX, this._midY, this._radius, minorRadius, 0.5*Math.PI, Math.PI, 2*Math.PI);
-      ctx.ellipse(this._midX, this._midY, this._radius, this._radius, 0.5*Math.PI, 0, Math.PI);
+      ctx.ellipse(this._midX, this._midY, this._radius, minorRadius, 0.5*Math.PI, 0, Math.PI, true);
+      ctx.ellipse(this._midX, this._midY, this._radius, this._radius, 0.5*Math.PI, Math.PI, 2*Math.PI, true);
       ctx.fillStyle = leftFillStyle;
       ctx.fill('evenodd');
       // Right side, crescent shape.
       ctx.beginPath();
-      ctx.ellipse(this._midX, this._midY, this._radius, this._radius, 0.5*Math.PI, Math.PI, 2*Math.PI);
+      ctx.ellipse(this._midX, this._midY, this._radius, this._radius, 0.5*Math.PI, 0, Math.PI, true);
       ctx.ellipse(this._midX, this._midY, this._radius, minorRadius, 0.5*Math.PI, Math.PI, 2*Math.PI);
       ctx.fillStyle = rightFillStyle;
       ctx.fill('evenodd');
