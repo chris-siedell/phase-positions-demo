@@ -1,12 +1,16 @@
 <!doctype html>
+<!--
+  astro.unl.edu
+  14 December 2018
+-->
 <html>
   <head>
-    <meta name="viewport" content = "width = device-width, height = device-height, initial-scale = 1, user-scalable = no">
+    <meta name="viewport" content = "width = device-width, height = device-height, initial-scale = 1.0, user-scalable = no">
     <title>Phase Positions Demo</title>
     <script src="PhasePositionsDemo.js"></script>
   </head>
-  <body style="padding: 0; margin: 0">
-    <div id="demo" style="position: fixed; width: 100%; height: 100%; left: 0; top: 0; background-color: black"></div>
+  <body style="padding: 0; margin: 0; background-color: black;">
+    <div id="demo" style="position: fixed; width: 100%; height: 100%; left: 0; top: 0"></div>
     <script>
       var demo = new window.astroUNL.PhasePositionsDemo(document.getElementById('demo'));
       demo.init();

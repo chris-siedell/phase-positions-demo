@@ -2,14 +2,14 @@
  * Main.js
  * phase-positions-demo
  * astro.unl.edu
- * 12 December 2018
+ * 14 December 2018
 */
 
 import ResizeSensor from 'css-element-queries/src/ResizeSensor';
 
 
 import {OrbitsView} from './OrbitsView.js';
-import {PhaseDisc} from './PhaseDisc.js';
+import {PhasePanel} from './PhasePanel.js';
 
 
 class PhasePositionsDemo {
@@ -25,18 +25,19 @@ class PhasePositionsDemo {
     let dark2 = {r: 96, g: 64, b: 64};
 
     this._rootElement = rootElement;
+    this._rootElement.style.backgroundColor = 'black';
 
     this._orbits = new OrbitsView(this);
     this._rootElement.appendChild(this._orbits.getElement());
     this._orbits.setColor1(color1);
     this._orbits.setColor2(color2);
 
-    this._phase1 = new PhaseDisc(this, 'Disc1');
+    this._phase1 = new PhasePanel(this, 'Disc1');
     this._rootElement.appendChild(this._phase1.getElement());
     this._phase1.setLightColor(light1);
     this._phase1.setDarkColor(dark1);
 
-    this._phase2 = new PhaseDisc(this, 'Disc2');
+    this._phase2 = new PhasePanel(this, 'Disc2');
     this._rootElement.appendChild(this._phase2.getElement());
     this._phase2.setLightColor(light2);
     this._phase2.setDarkColor(dark2);
@@ -124,8 +125,12 @@ class PhasePositionsDemo {
     }
 
     this._orbits.setWidthAndHeight(orbitsWidth, orbitsHeight);
-    this._phase1.setWidthAndHeight(phaseWidth, phaseHeight);
-    this._phase2.setWidthAndHeight(phaseWidth, phaseHeight);
+    let phaseDim = {
+      width: phaseWidth,
+      height: phaseHeight
+    };
+    this._phase1.setDim(phaseDim);
+    this._phase2.setDim(phaseDim);
 
     this._lastWidth = width;
     this._lastHeight = height;
@@ -143,6 +148,13 @@ class PhasePositionsDemo {
     let info = this._orbits.getInfo();
     this._phase1.setPhaseAngle(info.phaseAngle1);
     this._phase2.setPhaseAngle(info.phaseAngle2);
+
+    let body1Title = (info.isMoon1) ? 'Moon 1' : 'Planet 1';
+    let body2Title = (info.isMoon2) ? 'Moon 2' : 'Planet 2';
+
+    this._phase1.setLabel(body1Title + ' from ' + body2Title);
+    this._phase2.setLabel(body2Title + ' from ' + body1Title);
+
     this._phase1.render();
     this._phase2.render();
   }

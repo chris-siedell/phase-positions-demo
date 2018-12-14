@@ -2,7 +2,7 @@
  * OrbitsView.js
  * phase-positions-demo
  * astro.unl.edu
- * 12 December 2018
+ * 14 December 2018
 */
 
 import {DraggableBody} from './DraggableBody.js';
@@ -36,11 +36,36 @@ export class OrbitsView {
 
     this._parent = parent;
 
+    this._showOrbits = true;
+
     this._rootElement = document.createElement('div');
-    this._rootElement.style.position = 'relative';
+    this._rootElement.style.position = 'absolute';
+    //this._rootElement.style.backgroundColor = 'black';
 
     this._canvas = document.createElement('canvas');
     this._rootElement.appendChild(this._canvas);
+
+    this._showOrbitsDiv = document.createElement('div');
+    this._showOrbitsDiv.style.position = 'absolute';
+    this._showOrbitsDiv.style.fontFamily = 'sans-serif';
+    this._showOrbitsDiv.style.fontSize = '14px';
+    this._showOrbitsDiv.style.color = 'white';
+
+    this._showOrbitsCheckbox = document.createElement('input');
+    this._showOrbitsCheckbox.type = 'checkbox';
+    this._showOrbitsCheckbox.id = 'showOrbitsCheckbox';
+    this._showOrbitsCheckbox.checked = this._showOrbits;
+    this._showOrbitsDiv.appendChild(this._showOrbitsCheckbox);
+    
+    this._onShowOrbitsToggled = this._onShowOrbitsToggled.bind(this);
+    this._showOrbitsCheckbox.addEventListener('change', this._onShowOrbitsToggled);
+
+    this._showOrbitsLabel = document.createElement('label');
+    this._showOrbitsLabel.htmlFor = 'showOrbitsCheckbox';
+    this._showOrbitsLabel.textContent = 'Show Orbits';
+    this._showOrbitsDiv.appendChild(this._showOrbitsLabel);
+
+    this._rootElement.appendChild(this._showOrbitsDiv);
 
     this._body1 = new DraggableBody(this);
     this._rootElement.appendChild(this._body1.getElement());
@@ -55,6 +80,11 @@ export class OrbitsView {
     this._height = -1;
   }
  
+
+  _onShowOrbitsToggled(e) {
+    this._showOrbits = this._showOrbitsCheckbox.checked;
+    this.redraw();
+  }
 
   getElement() {
     return this._rootElement;
@@ -382,18 +412,29 @@ export class OrbitsView {
   render() {
     this._body1.render();
     this._body2.render();
+
+    let margin = 10;
+    this._showOrbitsDiv.style.left = (margin) + 'px';
+    this._showOrbitsDiv.style.top = (this._height - (this._showOrbitsDiv.offsetHeight + margin)) + 'px';
+
+
     this.redraw();
   }
 
 
-  redraw() {
+  _drawSunDisc(ctx) {
+    // Draw Sun disc.
+    let sunRadius = 12;
+    ctx.beginPath();
+    ctx.ellipse(this._sun.x, this._sun.y, sunRadius, sunRadius, 0, 0, 2*Math.PI);
+    ctx.fillStyle = 'rgb(249, 225, 156)';
+    ctx.fill();
+  }
 
-    let ctx = this._canvas.getContext('2d');
-
-    ctx.clearRect(0, 0, this._width, this._height);
+  _drawOrbits(ctx) {
 
     if (this._body1.getIsMoon()) {
-
+    
       let pos2 = this._body2.getPos();
 
       let r1 = this.calcDistance(this._body1.getPos(), pos2);
@@ -441,14 +482,74 @@ export class OrbitsView {
       ctx.strokeStyle = this._body2.getRGBString();
       ctx.stroke();
     }
-    
-    let sunRadius = 12;
-    ctx.beginPath();
-    ctx.ellipse(this._sun.x, this._sun.y, sunRadius, sunRadius, 0, 0, 2*Math.PI);
-    ctx.fillStyle = 'rgb(249, 225, 156)';
-    ctx.fill();
   }
 
+
+  _drawLabels(ctx) {
+
+    let pos1 = this._body1.getPos();
+    let pos2 = this._body2.getPos();
+
+    let labelHeight = 18;
+   
+    ctx.font = labelHeight + 'px sans-serif';
+    
+    let label1Width = ctx.measureText('1').width;
+    let label2Width = ctx.measureText('2').width;
+    let labelMaxWidth = Math.max(label1Width, label2Width);
+    let labelRadius = 0.5*Math.sqrt(labelHeight*labelHeight + labelMaxWidth*labelMaxWidth);
+
+    let dx = pos2.x - pos1.x;
+    let dy = pos2.y - pos1.y;
+    let dm = Math.sqrt(dx*dx + dy*dy);
+    let ux = dx/dm;
+    let uy = dy/dm;
+
+    let k = 0.3;
+
+    let ld2 = this._body2.getRadius() + k*labelHeight + labelRadius;
+    let l2x = pos2.x + ux*ld2;
+    let l2y = pos2.y + uy*ld2;
+
+    let ld1 = this._body1.getRadius() + k*labelHeight + labelRadius;
+    let l1x = pos1.x - ux*ld1;
+    let l1y = pos1.y - uy*ld1;
+
+
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.8)';
+
+    ctx.beginPath();
+    ctx.ellipse(l2x, l2y, labelRadius, labelRadius, 0, 0, 2*Math.PI);
+    ctx.fill();
+
+    ctx.beginPath();
+    ctx.ellipse(l1x, l1y, labelRadius, labelRadius, 0, 0, 2*Math.PI);
+    ctx.fill();
+
+    ctx.fillStyle = 'white';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+
+    ctx.beginPath();
+    ctx.fillText('2', l2x, l2y);
+
+    ctx.beginPath();
+    ctx.fillText('1', l1x, l1y);
+  }
+
+
+  redraw() {
+
+    let ctx = this._canvas.getContext('2d');
+
+    ctx.clearRect(0, 0, this._width, this._height);
+
+    this._drawSunDisc(ctx);
+    if (this._showOrbits) {
+      this._drawOrbits(ctx);
+    }
+    this._drawLabels(ctx);
+  }
 
 
 }

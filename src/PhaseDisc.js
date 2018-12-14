@@ -2,21 +2,25 @@
  * PhaseDisc.js
  * phase-positions-demo
  * astro.unl.edu
- * 12 December 2018
+ * 14 December 2018
 */
 
 
 export class PhaseDisc {
 
-  constructor(parent, debugName) {
-    this._parent = parent;
-    this._debugName = (debugName !== undefined) ? debugName : 'unspecified';
+  constructor() {
 
     this._rootElement = document.createElement('div');
     this._rootElement.style.position = 'absolute';
+    this._rootElement.style.margin = '0';
+    this._rootElement.style.padding = '0';
 
     this._canvas = document.createElement('canvas');
+    this._canvas.style.padding = '0';
+    this._canvas.style.margin = '0';
     this._rootElement.appendChild(this._canvas);
+
+    this._showDisc = true;
 
     this._angle = Math.PI/4;
   }
@@ -28,19 +32,22 @@ export class PhaseDisc {
 
 
   setPos(pos) {
+    this._x = pos.x;
+    this._y = pos.y;
     this._rootElement.style.left = pos.x + 'px';
     this._rootElement.style.top = pos.y + 'px';
   }
 
-
-  setWidthAndHeight(width, height) {
-    this._width = width;
-    this._height = height;
+  setDim(dim) {
+    this._width = dim.width;
+    this._height = dim.height;
     this._midX = 0.5*this._width;
     this._midY = 0.5*this._height;
-    this._radius = 0.8*0.5*Math.min(this._width, this._height);
+    this._radius = 0.5*Math.min(this._width, this._height) - 2;
     this._canvas.width = this._width;
     this._canvas.height = this._height;
+    this._rootElement.style.width = this._width + 'px';
+    this._rootElement.style.height = this._height + 'px';
   }
 
 
@@ -65,16 +72,32 @@ export class PhaseDisc {
     return this._angle;
   }
 
+  getShowDisc() {
+    return this._showDisc;
+  }
+
+  setShowDisc(bool) {
+    this._showDisc = bool;
+  }
 
   render() {
     this.redraw();
   }
 
   redraw() {
-
     let ctx = this._canvas.getContext('2d');
 
     ctx.clearRect(0, 0, this._width, this._height);
+
+    if (!this._showDisc) {
+      ctx.beginPath();
+      ctx.setLineDash([10, 15]);
+      ctx.ellipse(this._midX, this._midY, this._radius, this._radius, 0, 0, 2*Math.PI);
+      ctx.lineWidth = 2;
+      ctx.strokeStyle = 'white';
+      ctx.stroke();
+      return;
+    }
 
     let leftFillStyle;
     let rightFillStyle;

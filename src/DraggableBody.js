@@ -2,7 +2,7 @@
  * DraggableBody.js
  * phase-positions-demo
  * astro.unl.edu
- * 12 December 2018
+ * 14 December 2018
 */
 
 import {DraggableItemMixin} from './mixins/DraggableItemMixin.js';
@@ -85,6 +85,10 @@ export class DraggableBody {
     //  will move the body.
     this._parent._setBodyPosition(this, proposedPt);
     return undefined;
+  }
+
+  getRadius() {
+    return this._radius;
   }
 
   getElement() {
